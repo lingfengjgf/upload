@@ -1,10 +1,10 @@
 const URL = 'http://192.168.1.5:3000';
 
-export const callServer = (method, data) => {
+export const callServer = (method, data, type) => {
 	return new Promise((resolve, reject) => {
 		uni.request({
 			url:URL + method,
-			method:"POST",
+			method:type||"POST",
 			data,
 			dataType:"json",
 			success: (res) => {
@@ -40,12 +40,15 @@ export const callUpload = (filePath, formData) => {
 				reject(res)
 			},
 			fail: (err) => {
-				reject(res)
+				reject(err)
 			}
 		})
 	})
 }
 
+export const test = (data) => {
+	return callServer('/api/test', data, 'GET');
+}
 export const handshake = (data) => {
 	return callServer('/api/handshake', data);
 }

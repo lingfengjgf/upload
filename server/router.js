@@ -24,6 +24,11 @@ router.post('/handshake', (req, res) => {
 })
 
 router.post('/upload', (req, res) => {
+  // 随机报错
+  if(Math.random()>0.7){
+    res.send({code:"100",msg:'上传失败'});
+    return ;
+  }
   const form = new multiparty.Form();
   form.parse(req, async (err, fields, files) => {
     if(err){
@@ -35,7 +40,7 @@ router.post('/upload', (req, res) => {
     const [chunk] = files.file; // 切片文件
     const [currentChunk] = fields.currentChunk; // 切片下标
     const [hash] = fields.md5; // 切片MD5
-    const [filename] = fields.pt_md5; // 整个文件的MD5
+    const [filename] = fields.file_md5; // 整个文件的MD5
     const chunkDir = path.resolve(UPLOAD_DIR, filename);
 
     // 切片目录不存在，创建切片目录

@@ -10,10 +10,10 @@ export default class UploadVideo {
 	getShakeInfo() {
 		this.chunksLen = Math.ceil(this.options.byteLength / this.options.size);
 		this.currentChunk = 0;
-		this.pt_md5 = this.getMD5(this.options.filePath);
+		this.file_md5 = this.getMD5(this.options.filePath);
 		let formData = {...this.options};
 		formData.chunksLen = this.chunksLen;
-		formData.md5 = this.pt_md5;
+		formData.md5 = this.file_md5;
 		return formData;
 	}
 	getMD5(data){
@@ -37,30 +37,31 @@ export default class UploadVideo {
 				console.log('readFileSync err:',e);
 			}
 			// console.log('readFileData:',readFileData);
+
 			const md5 = this.getMD5(readFileData);
 			// 创建临时文件
 			const tempPath = `${wx.env.USER_DATA_PATH}/up_temp/${md5}.temp`;
 			// 创建目录
-			fs.access({
-				path:`${wx.env.USER_DATA_PATH}/up_temp`,
-				fail:()=>{
-					fs.mkdirSync(`${wx.env.USER_DATA_PATH}/up_temp`, false);
-				}
-			})
-			
+			try{
+				fs.accessSync(`${wx.env.USER_DATA_PATH}/up_temp`);
+			}catch(e){
+				console.log("accessSync err:",e);
+				fs.mkdirSync(`${wx.env.USER_DATA_PATH}/up_temp`, false);
+			}
 			// 写入文件系统
 			try{
 				fs.writeFileSync(tempPath, readFileData, 'binary');
 				const formData = {
-					currentChunk : this.currentChunk + 1,
-					pt_md5 : this.pt_md5,
-					md5 : md5
+					currentChunk : this.currentChunk+1,
+					file_md5 : this.file_md5,
+					md5
 				}
 				resolve({tempPath,formData});
 			}catch(e){
-				//TODO handle the exception
+				console.log('writeFileSync err:',e);
 				reject(e);
 			}
+			
 		})
 	}
 }

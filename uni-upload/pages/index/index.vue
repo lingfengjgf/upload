@@ -1,6 +1,9 @@
 <template>
 	<view class="content">
 		<image class="logo" src="/static/logo.png"></image>
+		<view class="">
+			<button @click="test">测试</button>
+		</view>
 		<view class="text-area">
 			<button @click="chooseVideo">{{title}}</button>
 		</view>
@@ -9,7 +12,7 @@
 </template>
 
 <script>
-	import { handshake, callUpload, merge } from "@/service/index.js";
+	import { handshake, callUpload, merge, test } from "@/service/index.js";
 	import UploadVideo from "@/common/js/upload.js";
 	export default {
 		data() {
@@ -22,18 +25,27 @@
 
 		},
 		methods: {
+			test(){
+				test().then(data=>{
+					console.log('test data:',data);
+				}).catch(err=>{
+					console.log('test err:',err);
+				})
+			},
 			chooseVideo(){
 				// let res = {
 				// 	byteLength:3312515,
 				// 	filePath:'12312312'
 				// }
 
-				uni.chooseVideo({
+				uni.chooseMedia({
+					count:1,
+					mediaType:['video'],
 					success: (res) => {
-						console.log("chooseVideo:",res);
+						let file = res.tempFiles[0];
 						let data = {
-							byteLength:res.size,
-							filePath:res.tempFilePath
+							byteLength:file.size,
+							filePath:file.tempFilePath
 						}
 						this.upload(data);
 					},
@@ -41,13 +53,6 @@
 						console.log("chooseVideo fail:",err);
 					}
 				})
-				
-				// let params={test:'11111'}
-				// handshake(params).then(data=>{
-				// 	console.log("handshake data:",data);
-				// }).catch(err=>{
-				// 	console.log("handshake err:",err);
-				// })
 			},
 			async upload(data){
 				const uploadFile = new UploadVideo(data);
@@ -60,45 +65,44 @@
 					return;
 				}
 				const fs = uni.getFileSystemManager();
-				let temp;
-				while (uploadFile.currentChunk < uploadFile.chunksLen){
+				let temp,form,stop=false;
+				while (uploadFile.currentChunk < uploadFile.chunksLen && !stop){
 					try{
-						const {tempPath,formData} = await uploadFile.getUploadChunk();
-						temp = tempPath;
-						console.log("getUploadChunk tempPath:",tempPath);
-						console.log("getUploadChunk formData:",formData);
-						const uploadData = await callUpload(tempPath, formData);
+						if(!form){
+							const {tempPath,formData} = await uploadFile.getUploadChunk();
+							// return 
+							temp = tempPath;							
+							form = formData;							
+						}
+						const uploadData = await callUpload(temp, form);
 						// 删除临时文件
-						fs.unlinkSync(tempPath);
+						fs.unlinkSync(temp);
 						uploadFile.currentChunk++;
-						console.log("uploadData:",uploadData);
+						temp="";
+						form=null;
 					}catch(e){
-						//TODO handle the exception
 						console.log("getUploadChunk err:",e);
-						fs.access({
-						  path: temp,
-						  success() {
-							// 文件存在
-							fs.unlinkSync(temp);
-						  },
-						  fail(res) {
-							// 文件不存在或其他错误
-							console.log("文件不存在:",res)
-						  }
-						})
+						if(temp){
+							// 上传失败,重试3次
+							if(form.error>3){
+								stop = true;
+								return ;
+							}
+							form.error=form.error?++form.error:1;							
+						}else{
+							stop = true;
+						}
 					}					
 				}
 				
 			},
 			async mergeClick(){
 				try{
-					const data = await merge({hash:this.hash, name:'weixin_video.mp4', size:2097152});
+					const data = await merge({hash:this.hash, name:`${this.hash}.mp4`, size:2097152});
 					console.log("mergeClick data:",data);
 				}catch(e){
 					console.log("mergeClick err:",e);
 				}
-				
-				
 			}
 		}
 	}
